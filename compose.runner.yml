@@ -1,0 +1,16 @@
+name: hearth-runner
+services:
+  runner:
+    image: hearth-deploy-runner:local
+    build:
+      context: .
+      dockerfile: deploy/runner/Dockerfile
+    restart: unless-stopped
+    network_mode: host
+    group_add: ['65534']
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./deploy-runner-state:/runner
+      - /usr/bin/docker:/usr/bin/docker:ro
+      - /usr/libexec/docker/cli-plugins/docker-compose:/usr/libexec/docker/cli-plugins/docker-compose:ro
+      - /home/jbox/Documents/ChatGPT/Linux general/hearth-and-spoon:/home/jbox/Documents/ChatGPT/Linux general/hearth-and-spoon

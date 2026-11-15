@@ -1,106 +1,43 @@
-[![Latest Release][latest-release-shield]][latest-release-url]
-[![Contributors][contributors-shield]][contributors-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![AGPL License][license-shield]][license-url]
-[![Docker Pulls][docker-pull]][docker-url]
-[![GHCR Pulls][ghcr-pulls]][ghcr-url]
+# Hearth & Spoon
 
-<!-- PROJECT LOGO -->
-<br />
-<p align="center">
-  <a href="https://github.com/mealie-recipes/mealie">
-<svg style="width:100px;height:100px" viewBox="0 0 24 24">
-    <path fill="currentColor" d="M8.1,13.34L3.91,9.16C2.35,7.59 2.35,5.06 3.91,3.5L10.93,10.5L8.1,13.34M13.41,13L20.29,19.88L18.88,21.29L12,14.41L5.12,21.29L3.71,19.88L13.36,10.22L13.16,10C12.38,9.23 12.38,7.97 13.16,7.19L17.5,2.82L18.43,3.74L15.19,7L16.15,7.94L19.39,4.69L20.31,5.61L17.06,8.85L18,9.81L21.26,6.56L22.18,7.5L17.81,11.84C17.03,12.62 15.77,12.62 15,11.84L14.78,11.64L13.41,13Z" />
-</svg>
-  </a>
+A private, self-hosted kitchen for recipes worth keeping. Built on **[Mealie](https://github.com/mealie-recipes/mealie)**, with a new interface and a protected AI workflow.
 
-  <h3 align="center">Mealie</h3>
+- Five themes: Hearth, Midnight, Botanical, Nordic and High Contrast.
+- Manual, pasted-text, supported-URL and ChatGPT MCP recipe drafts.
+- Ingredients, methods, cooking times, appliance settings and private recipe photos.
+- Local matching against 7,793 USDA foods; calculated calories and nutrients with explicit missing-data indicators.
+- Smaller batches, selected components and resumable cooking sessions that preserve the original.
+- Immutable recipe history. Established recipes require two human confirmations and password verification before a replacement version is published.
+- ChatGPT OAuth MCP using the official Python SDK and the local Career Vault connection pattern. AI cannot approve its own edits.
+- Docker Compose, private PostgreSQL, health checks, autoheal labels, encrypted nightly backups and GitHub Actions CI/CD.
 
-  <p align="center">
-    A Place For All Your Recipes
-    <br />
-    <a href="https://docs.mealie.io/"><strong>Explore the docs »</strong></a>
-  <a href="https://github.com/mealie-recipes/mealie">
-  </a>
-    <br />
-    <a href="https://demo.mealie.io/">View Demo</a>
-    ·
-    <a href="https://github.com/mealie-recipes/mealie/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/mealie-recipes/mealie/pkgs/container/mealie">GitHub Container Registry</a>
-</p>
+Deployment: [DEPLOYMENT.hearth.md](DEPLOYMENT.hearth.md). Repositories, licenses and data credits: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md). Original Mealie documentation: [README.mealie.md](README.mealie.md).
 
+## Runtime
 
+```bash
+node scripts/prepare-runtime.mjs
+mkdir -p backups
+docker compose up -d --build
+docker compose exec -it hearth uv run --no-project /opt/mealie/bin/python -m mealie.hearth.setup_owner
+```
 
+The interactive account command asks for your credentials without echoing the password. No public registration or usable default login is enabled.
 
-[![Product Name Screen Shot][product-screenshot]](https://docs.mealie.io)
+Local origin: `http://127.0.0.1:8098`. Intended HTTPS hostname: `https://recipes.jrhtechservices.party`. ChatGPT connector: `https://recipes.jrhtechservices.party/mcp/` with OAuth. Tunnel/route configuration is user-operated.
 
-# About The Project
+## Development and verification
 
-Mealie is a self hosted recipe manager, meal planner and shopping list with a RestAPI backend and a reactive frontend built in Vue for a pleasant user experience for the whole family. Easily add recipes into your database by providing the URL and Mealie will automatically import the relevant data, or add a family recipe with the UI editor. Mealie also provides an API for interactions from 3rd party applications.
+The backend extension is in `mealie/hearth/`; it reuses Mealie's native recipe models, schema and account storage. All writes go through the kitchen workflow. Published snapshots pin food data, methods, components and media references, preventing indirect changes. The custom Alembic migration adds workflow/history records in the same database.
 
-- [Remember to join the Discord](https://discord.gg/QuStdQGSGK)!
-- [Documentation](https://docs.mealie.io/)
+```bash
+bash scripts/ci.sh
+```
 
+CI uses disposable containers for both SQLite and PostgreSQL and restores an encrypted synthetic backup. It never connects to production data. On successful main-branch checks, a dedicated local runner deploys the verified commit and checks health. See deployment documentation for setup and recovery limits.
 
-## Key Features
-- Recipe imports: Create recipes, by **importing from a URL** or entering data manually
-- Meal Planner: Use the **Meal Planner** to plan your what you'll cook for the next week
-- Shopping List: Put the necessary ingredients on your **Shopping List**, organised into sections of your local supermarket
-- Cookbooks: Group recipes into **Cookbooks** based on your own criteria
-- Docker: Easy **Docker** deployment
-- Localisation: **Translations** for 35+ languages
+## Attribution and license
 
-<!-- CONTRIBUTING -->
-## Contributing
+This repository retains Mealie's AGPL-3.0 license, notices, source and history. Mealie v3.31.0 is the foundation. The official [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) provides the AI transport; [recipe-scrapers](https://github.com/hhursev/recipe-scrapers) provides supported-site extraction. The food catalogue is derived from public-domain [USDA FoodData Central](https://fdc.nal.usda.gov/download-datasets/) SR Legacy data. The complete list of incorporated/reference projects and deployment tooling is in [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md).
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**. If you're going to be working on the code-base, you'll want to use the nightly documentation to ensure you get the latest information.
-
-- See the [Contributors Guide](https://nightly.mealie.io/contributors/developers-guide/code-contributions/) for help getting started.
-- We use [VSCode Dev Containers](https://code.visualstudio.com/docs/remote/containers) to make it easy for contributors to get started!
-
-If you are not a coder, you can still contribute financially. Financial contributions help me prioritize working on this project over others and helps me know that there is a real demand for project development.
-
-<a href="https://www.buymeacoffee.com/haykot" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-green.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 107px !important;" ></a>
-
-### Translations
-
-Translations can be a great way for **non-coders** to contribute to the project. We use [Crowdin](https://crowdin.com/project/mealie) to allow several contributors to work on translating Mealie. You can simply help by voting for your preferred translations, or even by completely translating Mealie into a new language.
-
-For more information, check out the translation page on the [contributor's guide](https://nightly.mealie.io/contributors/translating/).
-
-<!-- LICENSE -->
-## License
-Distributed under the AGPL License. See `LICENSE` for more information.
-
-
-## Sponsors
-
-Huge thanks to all the sponsors of this project on [Github Sponsors](https://github.com/sponsors/hay-kot) and Buy Me a Coffee. Without you, this project would surely not be possible.
-
-Thanks to Depot for providing build instances for our Docker image builds.
-
-[![Built with Depot](https://depot.dev/badges/built-with-depot.svg)](https://depot.dev?utm_source=Mealie)
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/mealie-recipes/mealie.svg?style=flat-square
-[docker-pull]: https://img.shields.io/docker/pulls/hkotel/mealie?style=flat-square
-[docker-url]: https://hub.docker.com/r/hkotel/mealie
-[ghcr-pulls]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2Fmealie-recipes%2Fmealie%2Fmealie.json&query=%24.downloads&style=flat-square&label=ghcr%20pulls
-[ghcr-url]: https://github.com/mealie-recipes/mealie/pkgs/container/mealie
-[contributors-url]: https://github.com/mealie-recipes/mealie/graphs/contributors
-[stars-shield]: https://img.shields.io/github/stars/mealie-recipes/mealie.svg?style=flat-square
-[stars-url]: https://github.com/mealie-recipes/mealie/stargazers
-[issues-shield]: https://img.shields.io/github/issues/mealie-recipes/mealie.svg?style=flat-square
-[issues-url]: https://github.com/mealie-recipes/mealie/issues
-[latest-release-shield]: https://img.shields.io/github/v/release/mealie-recipes/mealie?style=flat-square&label=latest%20release
-[latest-release-url]: https://github.com/mealie-recipes/mealie/releases
-[license-shield]: https://img.shields.io/github/license/mealie-recipes/mealie.svg?style=flat-square
-[license-url]: https://github.com/mealie-recipes/mealie/blob/mealie-next/LICENSE
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/hay-kot
-[product-screenshot]: docs/docs/assets/img/home_screenshot.png
+Recipe prose and photos entered or imported by users retain their original attribution and rights. No bulk third-party recipe collection is bundled.

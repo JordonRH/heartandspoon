@@ -1,0 +1,35 @@
+name: Hearth & Spoon
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hearth-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Build and verify the Mealie kitchen
+        run: bash scripts/ci.sh
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: [self-hosted, linux, x64, hearth-deploy]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Deploy the verified commit and check health
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: bash scripts/deploy.sh

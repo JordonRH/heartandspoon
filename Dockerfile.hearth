@@ -1,0 +1,12 @@
+FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
+FROM ghcr.io/mealie-recipes/mealie:v3.31.0@sha256:97e21ac96e9a8d1ee15aaf558ba3f14998936b9d6f334e40ebb4c6c2127dc12f
+USER root
+COPY --from=uv /uv /usr/local/bin/uv
+RUN uv pip install --python /opt/mealie/bin/python 'mcp==1.28.0'
+ENV PYTHONPATH=/app/source UV_NO_CACHE=1 UV_NO_PROGRESS=1
+COPY mealie /app/source/mealie
+RUN mkdir -p /app/data && chown -R 911:911 /app/data
+USER 911:911
+ENTRYPOINT []
+CMD ["uv", "run", "--no-project", "/opt/mealie/bin/python", "-m", "uvicorn", "mealie.hearth.app:app", "--host", "0.0.0.0", "--port", "9000", "--no-access-log"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD curl -fsS http://127.0.0.1:9000/api/health >/dev/null || exit 1

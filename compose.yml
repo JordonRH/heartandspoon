@@ -1,0 +1,67 @@
+name: hearth-and-spoon
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hearth
+      POSTGRES_USER: hearth
+      POSTGRES_PASSWORD: ${HEARTH_DB_PASSWORD:?Run scripts/prepare-runtime.mjs first}
+    volumes:
+      - hearth-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U hearth -d hearth']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      autoheal: 'true'
+    networks: [kitchen]
+  hearth:
+    image: hearth-and-spoon:local
+    build:
+      context: .
+      dockerfile: Dockerfile.hearth
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8098:9000'
+    environment:
+      BASE_URL: https://recipes.jrhtechservices.party
+      PRODUCTION: 'true'
+      ALLOW_SIGNUP: 'false'
+      DB_ENGINE: postgres
+      POSTGRES_SERVER: db
+      POSTGRES_DB: hearth
+      POSTGRES_USER: hearth
+      POSTGRES_PASSWORD: ${HEARTH_DB_PASSWORD:?Run scripts/prepare-runtime.mjs first}
+      TZ: Australia/Sydney
+      LOG_LEVEL: ERROR
+      MAX_UPLOAD_SIZE_MB: '12'
+    volumes:
+      - hearth-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      autoheal: 'true'
+    networks: [kitchen]
+  backup:
+    image: hearth-and-spoon-backup:local
+    build: ./backup
+    user: '${HEARTH_UID:-1000}:${HEARTH_GID:-1000}'
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${HEARTH_DB_PASSWORD:?Run scripts/prepare-runtime.mjs first}
+      BACKUP_KEY: ${HEARTH_BACKUP_KEY:?Run scripts/prepare-runtime.mjs first}
+    volumes:
+      - hearth-data:/data:ro
+      - ./backups:/backups
+    depends_on:
+      hearth:
+        condition: service_healthy
+    networks: [kitchen]
+networks:
+  kitchen:
+volumes:
+  hearth-db:
+  hearth-data:

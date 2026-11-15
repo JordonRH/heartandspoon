@@ -178,3 +178,11 @@ frontend/eslint.config.deprecated.js
 
 # Playwright MCP screenshots, snapshots, and console logs
 .playwright-mcp/
+
+# Hearth & Spoon runtime state (never commit)
+.env
+.env.*
+!.env.example
+backups/
+deploy-runner-state/
+*.log
