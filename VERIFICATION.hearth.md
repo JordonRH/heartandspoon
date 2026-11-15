@@ -10,6 +10,6 @@
 - Dedicated `hearth-deploy` GitHub runner is registered and online. The workspace startup script includes application and runner services; installation of that updated script is user-operated.
 - A local encrypted backup archive was created; verification used file metadata only and did not inspect production backup contents.
 
-Browser inventory was empty and the in-app browser was unavailable. Visual layout, mobile interactions and accessibility contrast have not been verified in a live browser. This is explicitly separate from the passing backend and syntax checks.
+Five theme palettes pass automated WCAG AA checks for the specified main text/background pairs. Browser inventory was empty and the in-app browser was unavailable. Visual layout, mobile interactions and final rendered accessibility have not been verified in a live browser. This is explicitly separate from the passing backend, syntax and palette checks.
 
 The real ChatGPT connection depends on the user configuring the hostname to the documented origin and completing OAuth after setting up the owner account. No Cloudflare tunnel or route configuration was inspected or changed.

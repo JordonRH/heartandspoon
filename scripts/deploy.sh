@@ -13,6 +13,10 @@ if [[ -n "${EXPECTED_SHA:-}" && "$latest" != "$EXPECTED_SHA" ]]; then
   exit 0
 fi
 git merge --ff-only FETCH_HEAD
+if [[ "$(git rev-parse HEAD)" != "$latest" ]]; then
+  echo "Deployment stopped: the local checkout is ahead of the verified commit." >&2
+  exit 1
+fi
 previous=$(docker image ls --no-trunc --quiet hearth-and-spoon:local | head -n 1)
 if [[ -n "$previous" ]]; then docker tag "$previous" hearth-and-spoon:previous; fi
 if curl -fsS http://127.0.0.1:8098/api/health >/dev/null 2>&1; then
