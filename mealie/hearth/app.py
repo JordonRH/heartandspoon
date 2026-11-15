@@ -151,6 +151,19 @@ def drafts(kitchen: KitchenService = Depends(service)) -> list[dict]:
     return [draft_out(row) for row in kitchen.repo.rows(Draft) if row.status == "draft"]
 
 
+@app.post("/api/kitchen/drafts/bulk-publish")
+def bulk_publish(data: dict, identity: tuple = Depends(browser_identity), kitchen: KitchenService = Depends(service)) -> list[dict]:
+    items = data.get("items")
+    if not isinstance(items, list) or not 1 <= len(items) <= 100:
+        raise HTTPException(422, "Select between 1 and 100 reviewed changes")
+    throttle(kitchen.repo.session, "reauth:" + identity[0])
+    user = kitchen.repo.session.get(User, UUID(identity[0]))
+    verified = check_password(kitchen.repo.session, user.email, data.get("password", "")) if user else None
+    if not verified or str(verified.id) != identity[0]:
+        raise HTTPException(403)
+    return kitchen.publish_many(items, identity[1])
+
+
 @app.get("/api/kitchen/drafts/{draft_id}")
 def draft(draft_id: str, kitchen: KitchenService = Depends(service)) -> dict:
     return draft_out(kitchen.repo.owned(Draft, draft_id))

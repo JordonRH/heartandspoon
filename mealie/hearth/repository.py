@@ -92,7 +92,7 @@ class KitchenRepository:
             self.session.add(RecipeModel(session=self.session, **native))
         self.session.flush()
 
-    def publish(self, draft: Draft) -> Revision:
+    def publish(self, draft: Draft, commit: bool = True) -> Revision:
         recipe_id = draft.recipe_id or str(uuid4())
         state = self.owned(KitchenState, recipe_id, lock=True) if draft.recipe_id else None
         if state and state.revision != draft.base_revision:
@@ -111,7 +111,10 @@ class KitchenRepository:
         draft.status = "published"
         draft.recipe_id = recipe_id
         self.event("published", revision.id)
-        self.session.commit()
+        if commit:
+            self.session.commit()
+        else:
+            self.session.flush()
         return revision
 
 

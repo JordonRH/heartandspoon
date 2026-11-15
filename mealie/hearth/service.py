@@ -80,6 +80,36 @@ class KitchenService:
         # New recipes need a human Save & lock. Established recipes require both steps.
         return revision_out(self.repo.publish(row))
 
+    def publish_many(self, items: list[dict], browser_session: str) -> list[dict]:
+        if not isinstance(items, list) or not 1 <= len(items) <= 100:
+            raise HTTPException(422, "Select between 1 and 100 reviewed changes")
+        ids = [item.get("id") for item in items if isinstance(item, dict)]
+        if len(ids) != len(items) or any(not isinstance(value, str) for value in ids) or len(set(ids)) != len(ids):
+            raise HTTPException(422, "Each selected change must be unique")
+        hashes = {item["id"]: item.get("hash") for item in items}
+        try:
+            rows = [self.repo.owned(Draft, draft_id, lock=True) for draft_id in sorted(ids)]
+            recipe_ids: set[str] = set()
+            for row in rows:
+                if (row.status != "draft" or not row.recipe_id or row.fingerprint != hashes[row.id]
+                        or fingerprint(row.document) != row.fingerprint):
+                    raise HTTPException(409, "A selected change is unavailable or has changed")
+                if (not row.reviewed_at or time.time() - row.reviewed_at > 600
+                        or row.review_session != browser_session):
+                    raise HTTPException(409, "Review each selected change again before bulk approval")
+                if row.recipe_id in recipe_ids:
+                    raise HTTPException(409, "Select only one change per recipe")
+                recipe_ids.add(row.recipe_id)
+                if self.recipe(row.recipe_id)["revision"] != row.base_revision:
+                    raise HTTPException(409, "A selected recipe has changed. Prepare and review a fresh proposal.")
+            result = [revision_out(self.repo.publish(row, commit=False))
+                      for row in sorted(rows, key=lambda item: item.recipe_id or "")]
+            self.repo.session.commit()
+            return result
+        except Exception:
+            self.repo.session.rollback()
+            raise
+
     def start_cooking(self, recipe_id: str, factor: float, components: list[str], revision: str | None = None) -> dict:
         recipe = self.recipe(recipe_id)
         if revision:
