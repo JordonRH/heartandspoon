@@ -7,7 +7,7 @@ services:
       dockerfile: deploy/runner/Dockerfile
     restart: unless-stopped
     network_mode: host
-    group_add: ['65534']
+    group_add: ['${DOCKER_SOCKET_GID:-116}']
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./deploy-runner-state:/runner
