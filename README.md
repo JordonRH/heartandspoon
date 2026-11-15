@@ -24,7 +24,7 @@ docker compose exec -it hearth uv run --no-project /opt/mealie/bin/python -m mea
 
 The interactive account command asks for your credentials without echoing the password. No public registration or usable default login is enabled.
 
-Local origin: `http://127.0.0.1:8098`. Intended HTTPS hostname: `https://recipes.jrhtechservices.party`. ChatGPT connector: `https://recipes.jrhtechservices.party/mcp/` with OAuth. Tunnel/route configuration is user-operated.
+Host-local address: `http://127.0.0.1:8098`. Docker connector origin: `http://hearth-and-spoon:9000` on the existing shared `aitrace_proxy` network. Intended HTTPS hostname: `https://recipes.jrhtechservices.party`. ChatGPT connector: `https://recipes.jrhtechservices.party/mcp/` with OAuth. Tunnel/route configuration is user-operated.
 
 ## Development and verification
 

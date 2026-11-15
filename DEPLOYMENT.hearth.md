@@ -2,7 +2,9 @@
 
 Public hostname: `recipes.jrhtechservices.party`.
 
-Local HTTP origin: `http://127.0.0.1:8098`.
+Host-local HTTP address: `http://127.0.0.1:8098`.
+
+Origin reachable by the Docker-based connector: `http://hearth-and-spoon:9000` on the existing `aitrace_proxy` network.
 
 ChatGPT MCP address: `https://recipes.jrhtechservices.party/mcp/`, using OAuth.
 
@@ -29,7 +31,7 @@ If the current shell is not in the Docker group, use `sg docker -c 'COMMAND'` fo
 
 ## User-operated networking and startup installation
 
-All Cloudflare tunnel and route configuration remains user-operated. Configure the hostname above to the loopback HTTP origin above. The application, `/oauth/*`, `/.well-known/*` and `/mcp/` must reach the same origin. Do not put an interactive access challenge in front of the MCP or OAuth endpoints; application authentication remains required.
+All Cloudflare tunnel and route configuration remains user-operated. Configure the hostname above to **HTTP `hearth-and-spoon:9000`**. The existing connector runs on Docker bridge networks, so its loopback address is not the host's loopback address. Only the application joins the existing external `aitrace_proxy` network, with the stable alias `hearth-and-spoon`; the database and backup service remain on the private kitchen network. The application, `/oauth/*`, `/.well-known/*` and `/mcp/` must reach the same origin. Do not put an interactive access challenge in front of the MCP or OAuth endpoints; application authentication remains required.
 
 The workspace startup script includes both application and runner Compose files. Installing that updated script requires the user to run:
 
@@ -51,7 +53,7 @@ Use Your kitchen → Disconnect to revoke a connection. Password recovery/setup 
 
 `.github/workflows/hearth.yml` builds and tests on GitHub-hosted Ubuntu runners. Checks cover SQLite, PostgreSQL, native Mealie storage, immutable history, two confirmations, password verification, stale proposals, cooking-session pinning, nutrition math, OAuth/PKCE/refresh isolation, MCP transport, SSRF filtering, and an encrypted-backup restore drill.
 
-Successful main-branch runs deploy through the dedicated `hearth-deploy` runner. Pull requests never deploy or run on the private runner. Deployment checks the expected commit, refuses tracked local edits, backs up a running instance, builds, restarts and verifies local health plus authentication. It retains the prior application image for rollback. Database rollback requires an operator restore; image rollback does not reverse migrations.
+Successful main-branch runs deploy through the dedicated `hearth-deploy` runner. Pull requests never deploy or run on the private runner. Deployment checks the expected commit, refuses tracked local edits, backs up a running instance, builds, restarts and verifies local health plus authentication. It also probes the application from a disposable container on the connector's shared proxy network, so a host-only health check cannot conceal an unreachable proxy origin. It retains the prior application image for rollback. Database rollback requires an operator restore; image rollback does not reverse migrations.
 
 Runner registration is a separate one-time operator workflow. Its registration token is kept in process memory, passed to a temporary container, and never displayed or tracked. Persistent runner credentials live in ignored `deploy-runner-state/`; do not inspect or commit them. The long-running runner has no registration token environment value.
 

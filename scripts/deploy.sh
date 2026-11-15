@@ -36,6 +36,8 @@ for attempt in {1..60}; do
   if curl -fsS http://127.0.0.1:8098/api/health >/dev/null 2>&1; then
     test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8098/api/kitchen/recipes)" = 401
     curl -fsS http://127.0.0.1:8098/kitchen/assets/app.js >/dev/null
+    docker run --rm --network aitrace_proxy --entrypoint curl hearth-and-spoon:local \
+      -fsS --max-time 10 http://hearth-and-spoon:9000/api/health >/dev/null
     trap - ERR
     echo "Hearth & Spoon deployed and healthy at local port 8098."
     exit 0

@@ -44,7 +44,11 @@ services:
         condition: service_healthy
     labels:
       autoheal: 'true'
-    networks: [kitchen]
+    networks:
+      kitchen:
+      proxy:
+        aliases:
+          - hearth-and-spoon
   backup:
     image: hearth-and-spoon-backup:local
     build: ./backup
@@ -62,6 +66,9 @@ services:
     networks: [kitchen]
 networks:
   kitchen:
+  proxy:
+    external: true
+    name: aitrace_proxy
 volumes:
   hearth-db:
   hearth-data:
