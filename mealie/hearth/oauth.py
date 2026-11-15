@@ -80,8 +80,8 @@ def authorize(request: Request, session: Session = Depends(generate_session)):
 
 @router.post("/oauth/authorize")
 async def consent(request: Request, session: Session = Depends(generate_session)):
-    origin(request)
-    # Consent is an HTML form: session and one-time nonce replace the JSON CSRF header.
+    # The one-use nonce is bound below to this live browser session. This HTML form
+    # may be submitted from a browser context that omits or rewrites Origin.
     from mealie.hearth.models import WebSession
     browser_key = digest(request.cookies.get(COOKIE, ""))
     browser = session.get(WebSession, browser_key)
