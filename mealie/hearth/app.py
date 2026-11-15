@@ -151,6 +151,11 @@ def drafts(kitchen: KitchenService = Depends(service)) -> list[dict]:
     return [draft_out(row) for row in kitchen.repo.rows(Draft) if row.status == "draft"]
 
 
+@app.post("/api/kitchen/drafts/bulk-review")
+def bulk_review(data: dict, identity: tuple = Depends(browser_identity), kitchen: KitchenService = Depends(service)) -> list[dict]:
+    return kitchen.review_many(data.get("items"), identity[1])
+
+
 @app.post("/api/kitchen/drafts/bulk-publish")
 def bulk_publish(data: dict, identity: tuple = Depends(browser_identity), kitchen: KitchenService = Depends(service)) -> list[dict]:
     items = data.get("items")
