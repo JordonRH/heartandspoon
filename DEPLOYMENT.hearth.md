@@ -43,7 +43,7 @@ No tunnel configuration is included in this repository. The JRH dashboard catalo
 
 ## ChatGPT connection
 
-After the hostname reaches the application, add the MCP address above as a ChatGPT connector with OAuth. The flow follows Career Vault's existing pattern: dynamic public-client registration, S256 PKCE, a signed-in consent page, resource-bound access tokens, one-use codes and rotating refresh tokens. Only ChatGPT HTTPS connector callbacks are registered.
+After the hostname reaches the application, add the MCP address above as a ChatGPT connector with OAuth. The flow follows Career Vault's existing pattern: dynamic public-client registration, S256 PKCE, a signed-in consent page, resource-bound access tokens, one-use codes and rotating refresh tokens. Discovery advertises RFC 9207 issuer identification, and registration accepts both ChatGPT's stable OAuth callback and its callback-ID-specific HTTPS callback.
 
 There are no browser-approval tools in MCP. ChatGPT creates drafts or proposes revisions and returns a link to review in this application. Finalizing a change to an established recipe requires both browser confirmations and your password. A changed proposal, expired confirmation, changed base revision or different browser session invalidates approval.
 

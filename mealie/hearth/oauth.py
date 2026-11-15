@@ -27,7 +27,8 @@ def metadata() -> dict:
             "token_endpoint": PUBLIC_URL + "/oauth/token", "registration_endpoint": PUBLIC_URL + "/oauth/register",
             "revocation_endpoint": PUBLIC_URL + "/oauth/revoke", "response_types_supported": ["code"],
             "grant_types_supported": ["authorization_code", "refresh_token"], "code_challenge_methods_supported": ["S256"],
-            "token_endpoint_auth_methods_supported": ["none"], "scopes_supported": sorted(SCOPES)}
+            "token_endpoint_auth_methods_supported": ["none"], "scopes_supported": sorted(SCOPES),
+            "authorization_response_iss_parameter_supported": True}
 
 
 @router.get("/.well-known/oauth-protected-resource")
@@ -46,7 +47,8 @@ def register(request: Request, data: dict, session: Session = Depends(generate_s
         raise HTTPException(400, "Only public ChatGPT clients are supported")
     for uri in uris:
         parsed = urlsplit(uri)
-        if parsed.scheme != "https" or parsed.netloc != "chatgpt.com" or not parsed.path.startswith("/connector/oauth/") or parsed.query or parsed.fragment or len(uri) > 1024:
+        chatgpt_callback = parsed.path == "/connector_platform_oauth_redirect" or parsed.path.startswith("/connector/oauth/")
+        if parsed.scheme != "https" or parsed.netloc != "chatgpt.com" or not chatgpt_callback or parsed.query or parsed.fragment or len(uri) > 1024:
             raise HTTPException(400, "Only ChatGPT connector HTTPS callbacks are allowed")
     client = OAuthClient(id=secrets.token_urlsafe(24), owner="public", name=str(data.get("client_name", "ChatGPT"))[:240], redirects=uris)
     session.add(client)
@@ -92,7 +94,7 @@ async def consent(request: Request, session: Session = Depends(generate_session)
     session.delete(row)
     session.add(OAuthGrant(id=digest(code), owner=owner, kind="code", client_id=client_id, payload=payload, expires=time.time() + 300))
     session.commit()
-    return RedirectResponse(payload["redirect_uri"] + "?" + urlencode({"code": code, "state": payload.get("state", "")}), status_code=303)
+    return RedirectResponse(payload["redirect_uri"] + "?" + urlencode({"code": code, "state": payload.get("state", ""), "iss": PUBLIC_URL}), status_code=303)
 
 
 @router.post("/oauth/token")
