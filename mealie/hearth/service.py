@@ -80,7 +80,7 @@ class KitchenService:
         # New recipes need a human Save & lock. Established recipes require both steps.
         return revision_out(self.repo.publish(row))
 
-    def review_many(self, items: list[dict], browser_session: str) -> list[dict]:
+    def review_many(self, items: list[dict], browser_session: str) -> dict:
         if not isinstance(items, list) or not 1 <= len(items) <= 100:
             raise HTTPException(422, "Select between 1 and 100 recipe changes")
         ids = [item.get("id") for item in items if isinstance(item, dict)]
@@ -88,29 +88,58 @@ class KitchenService:
             raise HTTPException(422, "Each selected change must be unique")
         hashes = {item["id"]: item.get("hash") for item in items}
         try:
-            rows = [self.repo.owned(Draft, draft_id, lock=True) for draft_id in sorted(ids)]
+            rows, skipped = [], []
+            for draft_id in sorted(ids):
+                try:
+                    rows.append(self.repo.owned(Draft, draft_id, lock=True))
+                except HTTPException as error:
+                    if error.status_code != 404:
+                        raise
+                    skipped.append({"id": draft_id, "name": "Unavailable proposal", "reason": "Proposal no longer exists"})
+            reviewable = []
+            invalidated = []
+
+            def skip(row, reason):
+                if row.reviewed_at is not None:
+                    row.reviewed_at = None
+                    row.review_session = None
+                    invalidated.append(row)
+                skipped.append({"id": row.id, "name": row.document.get("name", "Untitled"), "reason": reason})
+
             recipe_ids: set[str] = set()
             for row in rows:
                 if (row.status != "draft" or not row.recipe_id or row.fingerprint != hashes[row.id]
                         or fingerprint(row.document) != row.fingerprint):
-                    raise HTTPException(409, "A selected change is unavailable or has changed")
+                    skip(row, "Proposal changed; review it again")
+                    continue
                 if row.recipe_id in recipe_ids:
-                    raise HTTPException(409, "Select only one change per recipe")
+                    skip(row, "Another selected proposal already targets this recipe")
+                    continue
                 recipe_ids.add(row.recipe_id)
-                if self.recipe(row.recipe_id)["revision"] != row.base_revision:
-                    raise HTTPException(409, "A selected recipe has changed. Prepare a fresh proposal.")
+                try:
+                    current = self.recipe(row.recipe_id)
+                except HTTPException as error:
+                    if error.status_code != 404:
+                        raise
+                    skip(row, "Original recipe is unavailable")
+                    continue
+                if current["revision"] != row.base_revision:
+                    skip(row, "Original recipe changed; make a fresh proposal")
+                    continue
+                reviewable.append(row)
             reviewed_at = time.time()
-            for row in rows:
+            for row in reviewable:
                 row.reviewed_at = reviewed_at
                 row.review_session = browser_session
                 self.repo.event("review_confirmed", row.id)
-            self.repo.session.commit()
-            return [draft_out(row) for row in rows]
+            if reviewable or invalidated:
+                self.repo.session.commit()
+            return {"reviewed": [draft_out(row) for row in reviewable], "skipped": skipped}
         except Exception:
             self.repo.session.rollback()
             raise
 
-    def publish_many(self, items: list[dict], browser_session: str) -> list[dict]:
+    def publish_many(self, items: list[dict], browser_session: str) -> dict:
         if not isinstance(items, list) or not 1 <= len(items) <= 100:
             raise HTTPException(422, "Select between 1 and 100 reviewed changes")
         ids = [item.get("id") for item in items if isinstance(item, dict)]
@@ -118,27 +147,68 @@ class KitchenService:
             raise HTTPException(422, "Each selected change must be unique")
         hashes = {item["id"]: item.get("hash") for item in items}
         try:
-            rows = [self.repo.owned(Draft, draft_id, lock=True) for draft_id in sorted(ids)]
+            rows, skipped = [], []
+            for draft_id in sorted(ids):
+                try:
+                    rows.append(self.repo.owned(Draft, draft_id, lock=True))
+                except HTTPException as error:
+                    if error.status_code != 404:
+                        raise
+                    skipped.append({"id": draft_id, "name": "Unavailable proposal", "reason": "Proposal no longer exists"})
+            invalidated = []
+
+            def skip(row, reason):
+                if row.reviewed_at is not None:
+                    row.reviewed_at = None
+                    row.review_session = None
+                    invalidated.append(row)
+                skipped.append({"id": row.id, "name": row.document.get("name", "Untitled"), "reason": reason})
+
+            publishable = []
             recipe_ids: set[str] = set()
             for row in rows:
                 if (row.status != "draft" or not row.recipe_id or row.fingerprint != hashes[row.id]
                         or fingerprint(row.document) != row.fingerprint):
-                    raise HTTPException(409, "A selected change is unavailable or has changed")
+                    skip(row, "Proposal changed; review it again")
+                    continue
                 if (not row.reviewed_at or time.time() - row.reviewed_at > 600
                         or row.review_session != browser_session):
-                    raise HTTPException(409, "Review each selected change again before bulk approval")
+                    skip(row, "Review expired; review it again")
+                    continue
                 if row.recipe_id in recipe_ids:
-                    raise HTTPException(409, "Select only one change per recipe")
+                    skip(row, "Another selected proposal already targets this recipe")
+                    continue
                 recipe_ids.add(row.recipe_id)
-                if self.recipe(row.recipe_id)["revision"] != row.base_revision:
-                    raise HTTPException(409, "A selected recipe has changed. Prepare and review a fresh proposal.")
+                try:
+                    current = self.recipe(row.recipe_id)
+                except HTTPException as error:
+                    if error.status_code != 404:
+                        raise
+                    skip(row, "Original recipe is unavailable")
+                    continue
+                if current["revision"] != row.base_revision:
+                    skip(row, "Original recipe changed; make a fresh proposal")
+                    continue
+                publishable.append(row)
+            if not publishable:
+                if invalidated:
+                    self.repo.session.commit()
+                return {"published": [], "skipped": skipped}
             result = [revision_out(self.repo.publish(row, commit=False))
-                      for row in sorted(rows, key=lambda item: item.recipe_id or "")]
+                      for row in sorted(publishable, key=lambda item: item.recipe_id or "")]
             self.repo.session.commit()
-            return result
+            return {"published": result, "skipped": skipped}
         except Exception:
             self.repo.session.rollback()
             raise
+
+    def discard_draft(self, draft_id: str) -> None:
+        row = self.repo.owned(Draft, draft_id, lock=True)
+        if row.status != "draft":
+            raise HTTPException(409, "Only pending proposals can be discarded")
+        self.repo.event("draft_discarded", row.id)
+        self.repo.session.delete(row)
+        self.repo.session.commit()
 
     def start_cooking(self, recipe_id: str, factor: float, components: list[str], revision: str | None = None) -> dict:
         recipe = self.recipe(recipe_id)

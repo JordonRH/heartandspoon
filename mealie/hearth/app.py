@@ -152,12 +152,12 @@ def drafts(kitchen: KitchenService = Depends(service)) -> list[dict]:
 
 
 @app.post("/api/kitchen/drafts/bulk-review")
-def bulk_review(data: dict, identity: tuple = Depends(browser_identity), kitchen: KitchenService = Depends(service)) -> list[dict]:
+def bulk_review(data: dict, identity: tuple = Depends(browser_identity), kitchen: KitchenService = Depends(service)) -> dict:
     return kitchen.review_many(data.get("items"), identity[1])
 
 
 @app.post("/api/kitchen/drafts/bulk-publish")
-def bulk_publish(data: dict, identity: tuple = Depends(browser_identity), kitchen: KitchenService = Depends(service)) -> list[dict]:
+def bulk_publish(data: dict, identity: tuple = Depends(browser_identity), kitchen: KitchenService = Depends(service)) -> dict:
     items = data.get("items")
     if not isinstance(items, list) or not 1 <= len(items) <= 100:
         raise HTTPException(422, "Select between 1 and 100 reviewed changes")
@@ -172,6 +172,12 @@ def bulk_publish(data: dict, identity: tuple = Depends(browser_identity), kitche
 @app.get("/api/kitchen/drafts/{draft_id}")
 def draft(draft_id: str, kitchen: KitchenService = Depends(service)) -> dict:
     return draft_out(kitchen.repo.owned(Draft, draft_id))
+
+
+@app.delete("/api/kitchen/drafts/{draft_id}")
+def discard_draft(draft_id: str, kitchen: KitchenService = Depends(service)) -> dict:
+    kitchen.discard_draft(draft_id)
+    return {"deleted": True}
 
 
 @app.post("/api/kitchen/drafts")
